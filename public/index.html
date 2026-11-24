@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elmas Ekonomisi</title>
+  <script src="https://unpkg.com/@discord/embedded-app-sdk@1.4.0/output/index.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+    body { background: #1e1f22; color: #f2f3f5; display: flex; height: 100vh; }
+    .sidebar { width: 220px; background: #2b2d31; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .sidebar h2 { color: #5865f2; font-size: 20px; margin-bottom: 15px; }
+    .tab-btn { background: transparent; border: none; color: #b5bac1; text-align: left; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 16px; transition: 0.2s; }
+    .tab-btn:hover, .tab-btn.active { background: #404249; color: #fff; }
+    .main { flex: 1; padding: 30px; overflow-y: auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; background: #2b2d31; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
+    .bakiye { font-size: 26px; font-weight: bold; color: #38bdf8; }
+    .card { background: #2b2d31; padding: 25px; border-radius: 12px; margin-bottom: 20px; }
+    .btn { background: #5865f2; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }
+    .btn:hover { background: #4752c4; }
+    .rozet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+    .rozet-item { background: #1e1f22; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #3f4147; }
+    .bildirim { position: fixed; bottom: 20px; right: 20px; background: #23a559; padding: 15px 25px; border-radius: 8px; display: none; font-weight: bold; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h2>💎 Elmas Sistemi</h2>
+    <button class="tab-btn active" onclick="sekmeAc('cuzdan', this)">👛 Cüzdan & Çalış</button>
+    <button class="tab-btn" onclick="sekmeAc('kasa', this)">📦 Kasa Aç</button>
+    <button class="tab-btn" onclick="sekmeAc('magaza', this)">🏅 Rozet Mağazası</button>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <div>
+        <h1 id="kullaniciAdi">Oyuncu</h1>
+        <p style="color:#949ba4; font-size:14px;">Sunucu Ekonomi Paneli</p>
+      </div>
+      <div class="bakiye">💎 <span id="elmasSayisi">0</span></div>
+    </div>
+
+    <!-- CÜZDAN & ÇALIŞMA -->
+    <div id="cuzdan" class="sekme">
+      <div class="card">
+        <h3>⛏️ Elmas Madeni (Çalış)</h3>
+        <p style="margin: 10px 0 20px; color:#b5bac1;">30 saniyede bir çalışarak 25 ile 75 arası Elmas kazanabilirsin.</p>
+        <button class="btn" onclick="calis()">Çalış ve Elmas Kazan</button>
+      </div>
+      <div class="card">
+        <h3>🏅 Sahip Olduğun Rozetler</h3>
+        <div id="sahipOlunanRozetler" style="margin-top:10px; color:#b5bac1;">Henüz rozetin yok.</div>
+      </div>
+    </div>
+
+    <!-- KASA AÇMA -->
+    <div id="kasa" class="sekme hidden">
+      <div class="card">
+        <h3>📦 Gizemli Elmas Kasası</h3>
+        <p style="margin: 10px 0 20px; color:#b5bac1;">Fiyat: <b>150 💎</b> — İçinden 50 💎, 200 💎 veya Efsanevi 500 💎 çıkabilir!</p>
+        <button class="btn" onclick="kasaAc()">Kasayı Aç (150 💎)</button>
+      </div>
+    </div>
+
+    <!-- ROZET MAĞAZASI -->
+    <div id="magaza" class="sekme hidden">
+      <div class="card">
+        <h3>🛒 Rozet Mağazası</h3>
+        <div class="rozet-grid">
+          <div class="rozet-item">
+            <div style="font-size:40px;">🥉</div>
+            <h4>Bronz Üye</h4>
+            <p style="color:#38bdf8; margin:8px 0;">250 💎</p>
+            <button class="btn" onclick="rozetAl('🥉 Bronz Üye', 250)">Satın Al</button>
+          </div>
+          <div class="rozet-item">
+            <div style="font-size:40px;">👑</div>
+            <h4>Kral Tacı</h4>
+            <p style="color:#38bdf8; margin:8px 0;">750 💎</p>
+            <button class="btn" onclick="rozetAl('👑 Kral Tacı', 750)">Satın Al</button>
+          </div>
+          <div class="rozet-item">
+            <div style="font-size:40px;">🐉</div>
+            <h4>Ejderha Efendisi</h4>
+            <p style="color:#38bdf8; margin:8px 0;">1500 💎</p>
+            <button class="btn" onclick="rozetAl('🐉 Ejderha Efendisi', 1500)">Satın Al</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bildirim" class="bildirim"></div>
+
+  <script>
+    let userId = 'misafir_' + (localStorage.getItem('uid') || Math.floor(Math.random() * 999999));
+    localStorage.setItem('uid', userId.replace('misafir_', ''));
+
+    function mesajGoster(metin, hata = false) {
+      const b = document.getElementById('bildirim');
+      b.innerText = metin;
+      b.style.background = hata ? '#da373c' : '#23a559';
+      b.style.display = 'block';
+      setTimeout(() => b.style.display = 'none', 3000);
+    }
+
+    function sekmeAc(id, btn) {
+      document.querySelectorAll('.sekme').forEach(s => s.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.remove('hidden');
+      btn.classList.add('active');
+    }
+
+    function arayuzGuncelle(user) {
+      document.getElementById('elmasSayisi').innerText = user.elmas;
+      const rDiv = document.getElementById('sahipOlunanRozetler');
+      rDiv.innerHTML = user.rozetler.length ? user.rozetler.join(' • ') : 'Henüz rozetin yok.';
+    }
+
+    async function veriYukle() {
+      const res = await fetch(`/api/user/${userId}`);
+      const data = await res.json();
+      arayuzGuncelle(data);
+    }
+
+    async function calis() {
+      const res = await fetch('/api/calis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId })
+      });
+      const data = await res.json();
+      if (!res.ok) return mesajGoster(data.hata, true);
+      arayuzGuncelle(data.user);
+      mesajGoster(`+${data.kazanc} 💎 kazandın!`);
+    }
+
+    async function kasaAc() {
+      const res = await fetch('/api/kasa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId })
+      });
+      const data = await res.json();
+      if (!res.ok) return mesajGoster(data.hata, true);
+      arayuzGuncelle(data.user);
+      mesajGoster(data.mesaj);
+    }
+
+    async function rozetAl(rozetAdi, fiyat) {
+      const res = await fetch('/api/rozet-al', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, rozetAdi, fiyat })
+      });
+      const data = await res.json();
+      if (!res.ok) return mesajGoster(data.hata, true);
+      arayuzGuncelle(data.user);
+      mesajGoster(data.mesaj);
+    }
+
+    veriYukle();
+  </script>
+</body>
+</html>
